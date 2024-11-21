@@ -1,59 +1,66 @@
-#include <termios.h>
 #include "header.h"
 
-char *USERS = "./data/users.txt";
-
-void loginMenu(char a[50], char pass[50])
-{
-    struct termios oflags, nflags;
-
-    system("clear");
-    printf("\n\n\n\t\t\t\t   Bank Management System\n\t\t\t\t\t User Login:");
-    scanf("%s", a);
-
-    // disabling echo
-    tcgetattr(fileno(stdin), &oflags);
-    nflags = oflags;
-    nflags.c_lflag &= ~ECHO;
-    nflags.c_lflag |= ECHONL;
-
-    if (tcsetattr(fileno(stdin), TCSANOW, &nflags) != 0)
-    {
-        perror("tcsetattr");
-        return exit(1);
-    }
-    printf("\n\n\n\n\n\t\t\t\tEnter the password to login:");
-    scanf("%s", pass);
-
-    // restore terminal
-    if (tcsetattr(fileno(stdin), TCSANOW, &oflags) != 0)
-    {
-        perror("tcsetattr");
-        return exit(1);
-    }
-};
-
-const char *getPassword(struct User u)
-{
-    FILE *fp;
-    struct User userChecker;
-
-    if ((fp = fopen("./data/users.txt", "r")) == NULL)
-    {
-        printf("Error! opening file");
-        exit(1);
-    }
-
-    while (fscanf(fp, "%s %s", userChecker.name, userChecker.password) != EOF)
-    {
-        if (strcmp(userChecker.name, u.name) == 0)
-        {
-            fclose(fp);
-            char *buff = userChecker.password;
-            return buff;
+// Function to log in a user
+int login(User *users, int user_count, int *logged_in_user_id) {
+    char name[MAX_NAME_LENGTH];
+    char password[MAX_PASSWORD_LENGTH];
+    
+    clear_screen();
+    printf("Enter username: ");
+    scanf("%49s", name);
+    printf("Enter password: ");
+    scanf("%49s", password);
+    
+    for (int i = 0; i < user_count; i++) {
+        if (strcmp(users[i].name, name) == 0 && strcmp(users[i].password, password) == 0) {
+            *logged_in_user_id = users[i].id;
+            return 1; // Login successful
         }
     }
+    
+    printf("Invalid username or password.\n");
+    return 0; // Login failed
+}
 
-    fclose(fp);
-    return "no user found";
+// Function to register a new user
+int register_user(User *users, int *user_count) {
+    User new_user;
+    
+    clear_screen();
+    // Check if maximum users limit reached
+    if (*user_count >= MAX_USERS) {
+        printf("Maximum user limit reached!\n");
+        return 0;
+    }
+
+    // Safe input for name
+    if (!safe_input("Enter your name: ", new_user.name, sizeof(new_user.name))) {
+        return 0;
+    }
+
+    // Check if username already exists
+    for (int i = 0; i < *user_count; i++) {
+        if (strcmp(users[i].name, new_user.name) == 0) {
+            printf("Username already exists. Choose a different name.\n");
+            return 0;
+        }
+    }
+    
+    if (!safe_input("Enter your password: ",  new_user.password, sizeof(new_user.password))) {
+        return 0;
+    }
+    
+    
+    // Assign unique ID
+    new_user.id = *user_count;
+    
+    // Add new user
+    users[*user_count] = new_user;
+    (*user_count)++;
+    
+    // Save to file
+    save_users_to_file(users, *user_count);
+    
+    printf("User  registered successfully!\n");
+    return 1;
 }
